@@ -1,0 +1,27 @@
+{
+  "name": "Quality Education Extractor",
+  "description": "Telegram bot to extract course content without encryption.",
+  "repository": "https://github.com/YOUR_USERNAME/YOUR_REPO_NAME",
+  "logo": "https://www.herokucdn.com/deploy/button.svg",
+  "keywords": ["telegram", "bot", "pyrogram", "scraper"],
+  "env": {
+    "API_ID": {
+      "description": "Get this from https://my.telegram.org",
+      "value": ""
+    },
+    "API_HASH": {
+      "description": "Get this from https://my.telegram.org",
+      "value": ""
+    },
+    "BOT_TOKEN": {
+      "description": "Get this from @BotFather",
+      "value": ""
+    }
+  },
+  "formation": {
+    "worker": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  }
+}
