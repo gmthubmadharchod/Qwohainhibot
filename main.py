@@ -10,7 +10,6 @@ from pyromod import listen
 from pyrogram.types import Message
 import config
 
-# Logging setup
 logging.basicConfig(level=logging.INFO)
 
 # ------------------ Render Web Server ------------------
@@ -19,7 +18,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "Bot is running!"
+    return "Bot Running"
 
 def run_web():
     port = int(os.environ.get("PORT", 10000))
@@ -41,11 +40,13 @@ def count_urls(file_path):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             lines = f.read().splitlines()
+
         total_links = len(lines)
         video_links = sum(1 for line in lines if any(ext in line.lower() for ext in [".m3u8", ".mp4"]))
         pdf_links = sum(1 for line in lines if ".pdf" in line.lower())
+
         return total_links, pdf_links, video_links
-    except Exception:
+    except:
         return 0, 0, 0
 
 # ------------------ Commands ------------------
@@ -67,6 +68,7 @@ async def quality_command_handler(bot, m: Message):
 
     try:
 
+        # Step 1: Get Categories
         r = requests.get("https://test.qualityeducation.in/api/video-category-get", headers=headers)
         j = r.json()
 
@@ -79,11 +81,13 @@ async def quality_command_handler(bot, m: Message):
 
         await temp_msg.edit_text(listing)
 
+        # Step 2: Ask Course ID
         bi_msg = await bot.ask(m.chat.id, "🆔 Please enter the **Course ID**:")
         bi = bi_msg.text.strip()
 
-        update = await m.reply_text(f"⏳ Extracting data for `{bi}`")
+        update = await m.reply_text(f"⏳ Extracting data for `{bi}`...")
 
+        # Step 3: Fetch Batch
         r2 = requests.get(f"https://test.qualityeducation.in/api/combo-get/318096/{bi}", headers=headers)
         j2 = r2.json()
 
@@ -95,6 +99,7 @@ async def quality_command_handler(bot, m: Message):
 
         file_name = f"{clean_filename(bi)}_{clean_filename(dn)}.txt"
 
+        # Step 4: Scrape links
         with open(file_name, "w", encoding="utf-8") as f:
 
             for video_data in j2["data"]["video"]:
@@ -133,6 +138,7 @@ async def quality_command_handler(bot, m: Message):
                         if v:
                             f.write(f"{topic}: {v}\n")
 
+        # Step 5: Send file
         total, pdfs, videos = count_urls(file_name)
 
         caption = (
@@ -153,8 +159,10 @@ async def quality_command_handler(bot, m: Message):
         await update.delete()
 
     except Exception as e:
+
         logging.error(e)
-        await m.reply_text(f"❌ Error: {str(e)}")
+
+        await m.reply_text(f"❌ Error: {e}")
 
 # ------------------ Bot Start ------------------
 
@@ -163,15 +171,15 @@ async def start_bot():
     logging.info("BOT STARTED")
     await asyncio.Event().wait()
 
+# ------------------ Main ------------------
+
 if __name__ == "__main__":
 
     try:
 
         threading.Thread(target=run_web).start()
 
-        loop = asyncio.get_event_loop()
-
-        loop.run_until_complete(start_bot())
+        asyncio.run(start_bot())
 
     except KeyboardInterrupt:
 
