@@ -3,7 +3,6 @@ import re
 import asyncio
 import requests
 import logging
-import threading
 from flask import Flask
 from pyrogram import Client, filters
 from pyromod import listen
@@ -12,7 +11,7 @@ import config
 
 logging.basicConfig(level=logging.INFO)
 
-# -------- Render Web Server --------
+# -------- Flask Web Server --------
 
 app = Flask(__name__)
 
@@ -20,9 +19,10 @@ app = Flask(__name__)
 def home():
     return "Bot Running"
 
-def run_web():
+async def run_web():
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, app.run, "0.0.0.0", port)
 
 # -------- Bot Setup --------
 
@@ -52,13 +52,13 @@ def count_urls(file_path):
 
 @bot.on_message(filters.command(["start"]))
 async def start_handler(client, m: Message):
-    await m.reply_text("नमस्ते! Quality Education बैच निकालने के लिए /qe कमांड का उपयोग करें।")
+    await m.reply_text("नमस्ते! /qe command उपयोग करें।")
 
 
 @bot.on_message(filters.command(["qe"]))
 async def qe_handler(client, m: Message):
 
-    temp_msg = await m.reply_text("🔍 Fetching batches...")
+    temp_msg = await m.reply_text("Fetching batches...")
 
     headers = {
         "Host": "test.qualityeducation.in",
@@ -75,17 +75,17 @@ async def qe_handler(client, m: Message):
 
         j = r.json()
 
-        listing = "🎓 Available Batches\n\n"
+        listing = "Available Batches\n\n"
 
         for i in j["data"]:
-            listing += f"🔹 `{i['id']}` → {i['category_name']}\n"
+            listing += f"{i['id']} → {i['category_name']}\n"
 
         await temp_msg.edit_text(listing)
 
-        bi_msg = await client.ask(m.chat.id,"🆔 Course ID भेजो")
+        bi_msg = await client.ask(m.chat.id,"Course ID भेजो")
         bi = bi_msg.text.strip()
 
-        update = await m.reply_text(f"⏳ Extracting `{bi}`")
+        update = await m.reply_text("Extracting...")
 
         r2 = requests.get(
             f"https://test.qualityeducation.in/api/combo-get/318096/{bi}",
@@ -95,7 +95,7 @@ async def qe_handler(client, m: Message):
         j2 = r2.json()
 
         if not j2.get("data") or not j2["data"].get("video"):
-            await update.edit_text("❌ Invalid ID")
+            await update.edit_text("Invalid ID")
             return
 
         dn = j2["data"]["video"][0]["title"]
@@ -147,16 +147,9 @@ async def qe_handler(client, m: Message):
                         if v:
                             f.write(f"{topic}: {v}\n")
 
-
         total,pdfs,vids = count_urls(file_name)
 
-        caption = (
-            f"📦 Batch Extracted\n\n"
-            f"📛 Batch: {dn}\n\n"
-            f"Total: {total}\n"
-            f"Videos: {vids}\n"
-            f"PDFs: {pdfs}"
-        )
+        caption = f"Batch: {dn}\nTotal: {total}\nVideos: {vids}\nPDFs: {pdfs}"
 
         await m.reply_document(file_name,caption=caption)
 
@@ -166,10 +159,8 @@ async def qe_handler(client, m: Message):
 
     except Exception as e:
         logging.error(e)
-        await m.reply_text(f"Error:\n{e}")
+        await m.reply_text(str(e))
 
-
-# -------- Start Bot --------
 
 async def main():
 
@@ -177,11 +168,10 @@ async def main():
 
     logging.info("BOT STARTED")
 
+    asyncio.create_task(run_web())
+
     await asyncio.Event().wait()
 
 
 if __name__ == "__main__":
-
-    threading.Thread(target=run_web).start()
-
-    asyncio.run(main())                    
+    asyncio.run(main())
